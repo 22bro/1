@@ -2,10 +2,13 @@ name: Weekly Telegram Stock Alert
 
 on:
   schedule:
-    # 10번 줄: 들여쓰기 공백 4칸 확인
+    # 매주 월요일 오전 8시 (KST) = 일요일 오후 11시 (UTC)
     - cron: '0 23 * * 0'
-  # 11번 줄: workflow_dispatch는 schedule과 같은 라인(공백 2칸)에 맞춰야 에러가 안 납니다.
   workflow_dispatch:
+
+env:
+  # Node.js 20 deprecation 경고 해결을 위해 Node 24 사용 강제
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -28,5 +31,5 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        # 실행할 파이썬 파일명과 일치해야 함
+        # 실행할 파이썬 파일명과 일치하는지 확인하십시오.
         run: python telegram_kospi_bot.py
