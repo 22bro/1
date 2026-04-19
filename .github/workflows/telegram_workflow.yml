@@ -1,72 +1,32 @@
-import telepot
-import FinanceDataReader as fdr
-from datetime import datetime
-import os
+name: Weekly Telegram Stock Alert
 
-# GitHub Secrets에서 설정한 환경 변수를 안전하게 가져옵니다.
-# 로컬 테스트 시에는 os.getenv 대신 직접 토큰과 ID를 문자열로 넣어도 됩니다.
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+on:
+  schedule:
+    # 10번 줄: 들여쓰기 공백 4칸 확인
+    - cron: '0 23 * * 0'
+  # 11번 줄: workflow_dispatch는 schedule과 같은 라인(공백 2칸)에 맞춰야 에러가 안 납니다.
+  workflow_dispatch:
 
-def get_kospi_report():
-    """
-    KOSPI 지수 데이터를 분석하여 메시지를 생성합니다.
-    """
-    try:
-        # 코스피(KS11) 데이터 호출
-        df = fdr.DataReader('KS11')
-        
-        # 마지막 2거래일 데이터 추출
-        current_data = df.iloc[-1]
-        prev_data = df.iloc[-2]
-        
-        current_price = current_data['Close']
-        change = current_price - prev_data['Close']
-        change_percent = (change / prev_data['Close']) * 100
-        
-        # 등락 심볼 설정
-        if change > 0:
-            symbol = "📈 상승"
-        elif change < 0:
-            symbol = "📉 하락"
-        else:
-            symbol = "⚖️ 보합"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        # 현재 시간 포맷
-        now = datetime.now().strftime('%Y-%m-%d %H:%M')
-        
-        # 메시지 구성 (가독성을 위한 이모지 및 구분선 활용)
-        message = (
-            f"🔔 [주간 코스피 리포트]\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📅 시간: {now}\n"
-            f"📍 지수: {current_price:,.2f}\n"
-            f"📊 변동: {change:+.2f} ({change_percent:+.2f}%)\n"
-            f"📢 상태: {symbol}\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"오늘도 성공적인 투자 되세요! 💪"
-        )
-        return message
-    except Exception as e:
-        return f"❌ 데이터 분석 중 오류가 발생했습니다: {str(e)}"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-def send_telegram_msg(text):
-    """
-    텔레그램 봇을 통해 메시지를 전송합니다.
-    """
-    if not TELEGRAM_TOKEN or not CHAT_ID:
-        print("설정 오류: TELEGRAM_TOKEN 또는 CHAT_ID 환경 변수를 찾을 수 없습니다.")
-        return
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install telepot finance-datareader pandas
 
-    try:
-        # 텔레그램 봇 객체 생성 및 메시지 전송
-        bot = telepot.Bot(TELEGRAM_TOKEN)
-        bot.sendMessage(CHAT_ID, text)
-        print("✅ 텔레그램 메시지 전송에 성공했습니다.")
-    except Exception as e:
-        print(f"❌ 전송 실패: {e}")
-
-if __name__ == "__main__":
-    # 리포트 생성 및 전송 실행
-    content = get_kospi_report()
-    send_telegram_msg(content)
+      - name: Run bot script
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        # 실행할 파이썬 파일명과 일치해야 함
+        run: python telegram_kospi_bot.py
